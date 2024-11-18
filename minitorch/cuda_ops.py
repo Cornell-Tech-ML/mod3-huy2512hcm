@@ -340,8 +340,8 @@ def tensor_reduce(
             cuda.syncthreads()  
             s = s // 2
             
-            if pos == 0:
-                out[out_pos] = cache[0]
+        if pos == 0:
+            out[out_pos] = cache[0]
 
     return jit(_reduce)  # type: ignore
 
