@@ -325,8 +325,8 @@ def tensor_reduce(
         size = a_shape[reduce_dim]
         if pos < size:
             to_index(out_pos, out_shape, out_index)
-            a_pos = index_to_position(out_index, a_strides)
             out_index[reduce_dim] = pos
+            a_pos = index_to_position(out_index, a_strides)
             cache[pos] = a_storage[a_pos]
         else:
             cache[pos] = reduce_value
@@ -338,10 +338,11 @@ def tensor_reduce(
             if pos < s and pos + s < size:
                 cache[pos] = fn(cache[pos], cache[pos + s])
             cuda.syncthreads()  
-            s = s // 2
+            s //= 2
             
         if pos == 0:
-            out[out_pos] = cache[0]
+            new_pos = index_to_position(out_index, out_strides)
+            out[new_pos] = cache[0]
 
     return jit(_reduce)  # type: ignore
 
