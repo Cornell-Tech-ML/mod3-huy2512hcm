@@ -382,8 +382,8 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     a_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
     b_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
 
-    i = cuda.blockIdx.x 
-    j = cuda.blockIdx.y
+    i = cuda.threadIdx.x 
+    j = cuda.threadIdx.y
 
     if i < size and j < size:
         a_shared[i, j] = a[i * size + j]
@@ -466,6 +466,10 @@ def _tensor_matrix_multiply(
     shared_dim = a_shape[-1]
     acc = 0.0
     for k in range(0, shared_dim, BLOCK_DIM):
+        a_shared[pi, pj] = 0.0
+        b_shared[pi, pj] = 0.0
+        cuda.syncthreads()
+
         if i < a_shape[-2] and k + pj < shared_dim:
             a_shared[pi, pj] = a_storage[batch * a_batch_stride + i * a_strides[-2] + (k + pj) * a_strides[-1]]
         if j < b_shape[-1] and k + pi < shared_dim:
