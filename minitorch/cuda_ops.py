@@ -265,8 +265,6 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
     # TODO: Implement for Task 3.3.
     if i < size:
         cache[pos] = i
-    else:
-        cache[pos] = 0.0
     cuda.syncthreads()
     
     if pos == 0 and pos < size:
@@ -342,8 +340,8 @@ def tensor_reduce(
             s //= 2
             
         if pos == 0:
-            new_pos = index_to_position(out_index, out_strides)
-            out[new_pos] = cache[0]
+            out_pos = index_to_position(out_index, out_strides)
+            out[out_pos] = cache[0]
 
     return jit(_reduce)  # type: ignore
 
