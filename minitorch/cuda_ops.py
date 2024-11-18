@@ -382,27 +382,18 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     a_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
     b_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
 
-    # The final position c[i, j]
-    i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
-    j = cuda.blockIdx.y * cuda.blockDim.y + cuda.threadIdx.y
+    i = cuda.blockIdx.x 
+    j = cuda.blockIdx.y
 
-    # The local position in the block.
-    local_i = cuda.threadIdx.x
-    local_j = cuda.threadIdx.y
-
-    acc = 0
-    for k in range(0, size, BLOCK_DIM):
-        if i < size and k + local_j < size:
-            a_shared[local_i, local_j] = a[i, k + local_j]
-        if j < size and k + local_i < size:
-            b_shared[local_i, local_j] = b[k + local_i, j]
-        cuda.syncthreads()
-
-        for local_k in range(min(BLOCK_DIM, size - k)):
-            acc += a_shared[local_i, local_k] * b_shared[local_k][local_j]
-        cuda.syncthreads()
     if i < size and j < size:
-        out[i, j] = acc
+        a_shared[i, j] = a[i * size + j]
+        b_shared[i, j] = b[i * size + j]
+        cuda.syncthreads()
+
+        acc = 0.0
+        for k in range(size):
+            acc += a_shared[i, k] + b_shared[k, j]
+        out[i * size + j] = acc
 
 
 jit_mm_practice = jit(_mm_practice)
