@@ -393,7 +393,6 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
         for k in range(size):
             acc += a_shared[i, k] * b_shared[k, j]
         out[i * size + j] = acc
-        cuda.syncthreads()
 
 
 jit_mm_practice = jit(_mm_practice)
@@ -475,7 +474,7 @@ def _tensor_matrix_multiply(
             b_shared[pi, pj] = b_storage[batch * b_batch_stride + (k + pi) * b_strides[-2] + j * b_strides[-1]]
         cuda.syncthreads()
     
-        for bk in range(min(BLOCK_DIM, shared_dim - BLOCK_DIM)):
+        for bk in range(BLOCK_DIM):
             acc += a_shared[pi, bk] * b_shared[bk, pj]
         cuda.syncthreads()
 
