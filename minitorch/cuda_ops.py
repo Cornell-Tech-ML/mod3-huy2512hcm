@@ -381,7 +381,6 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     # TODO: Implement for Task 3.3.
     a_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
     b_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
-
     i = cuda.threadIdx.x 
     j = cuda.threadIdx.y
 
@@ -392,7 +391,7 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
 
         acc = 0.0
         for k in range(size):
-            acc += a_shared[i, k] + b_shared[k, j]
+            acc += a_shared[i, k] * b_shared[k, j]
         out[i * size + j] = acc
 
 
