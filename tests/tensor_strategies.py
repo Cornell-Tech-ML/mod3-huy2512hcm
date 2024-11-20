@@ -13,8 +13,6 @@ from hypothesis.strategies import (
 
 import minitorch
 from minitorch import Tensor, TensorBackend, TensorData, UserIndex, UserShape
-from minitorch.operators import prod
-from minitorch.tensor_ops import SimpleBackend
 
 from .strategies import small_ints
 
@@ -31,8 +29,7 @@ def vals(draw: DrawFn, size: int, number: SearchStrategy[float]) -> Tensor:
             max_size=size,
         )
     )
-
-    return Tensor(TensorData(pts, shape=(size,)))
+    return minitorch.tensor(pts)
 
 
 @composite
@@ -49,7 +46,7 @@ def tensor_data(
 ) -> TensorData:
     if shape is None:
         shape = draw(shapes())
-    size = int(prod(shape))
+    size = int(minitorch.prod(shape))
     data = draw(lists(numbers, min_size=size, max_size=size))
     permute: List[int] = draw(permutations(range(len(shape))))
     permute_shape = tuple([shape[i] for i in permute])
@@ -75,9 +72,9 @@ def tensors(
     backend: Optional[TensorBackend] = None,
     shape: Optional[UserShape] = None,
 ) -> Tensor:
-    backend = SimpleBackend if backend is None else backend
+    backend = minitorch.SimpleBackend if backend is None else backend
     td = draw(tensor_data(numbers, shape=shape))
-    return Tensor(td, backend=backend)
+    return minitorch.Tensor(td, backend=backend)
 
 
 @composite
@@ -94,7 +91,11 @@ def shaped_tensors(
     values = []
     for i in range(n):
         data = draw(lists(numbers, min_size=td.size, max_size=td.size))
-        values.append(Tensor(TensorData(data, td.shape, td.strides), backend=backend))
+        values.append(
+            minitorch.Tensor(
+                minitorch.TensorData(data, td.shape, td.strides), backend=backend
+            )
+        )
     return values
 
 
@@ -111,9 +112,9 @@ def matmul_tensors(
     l2 = (j, k)
     values = []
     for shape in [l1, l2]:
-        size = int(prod(shape))
+        size = int(minitorch.prod(shape))
         data = draw(lists(numbers, min_size=size, max_size=size))
-        values.append(Tensor(TensorData(data, shape)))
+        values.append(minitorch.Tensor(minitorch.TensorData(data, shape)))
     return values
 
 

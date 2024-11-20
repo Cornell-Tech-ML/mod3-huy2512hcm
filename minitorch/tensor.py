@@ -30,6 +30,7 @@ from .tensor_functions import (
     Sigmoid,
     Sum,
     View,
+    tensor,
 )
 
 if TYPE_CHECKING:
@@ -294,12 +295,12 @@ class Tensor:
     @property
     def size(self) -> int:
         """Return the total number of elements in the tensor."""
-        return int(operators.prod(self.shape))
+        return self._tensor.size
 
     @property
     def dims(self) -> int:
         """Return the number of dimensions of the tensor."""
-        return len(self.shape)
+        return self._tensor.dims
 
     def __add__(self, b: TensorLike) -> Tensor:
         """Add two tensors element-wise."""
@@ -307,7 +308,7 @@ class Tensor:
 
     def __sub__(self, b: TensorLike) -> Tensor:
         """Subtract two tensors element-wise."""
-        return Add.apply(self, Neg.apply(self._ensure_tensor(b)))
+        return Add.apply(self, -self._ensure_tensor(b))
 
     def __lt__(self, b: TensorLike) -> Tensor:
         """Compare two tensors element-wise (less than)."""
@@ -331,22 +332,22 @@ class Tensor:
 
     def __radd__(self, b: TensorLike) -> Tensor:
         """Add a scalar to the tensor (right-side addition)."""
-        return self + self._ensure_tensor(b)
+        return self + b
 
     def __rmul__(self, b: TensorLike) -> Tensor:
         """Multiply the tensor by a scalar (right-side multiplication)."""
-        return self * self._ensure_tensor(b)
+        return self * b
 
     def all(self, dim: Optional[int] = None) -> Tensor:
         """Check if all elements are True along a given dimension."""
         if dim is None:
-            return All.apply(self.contiguous().view(self.size), self._ensure_tensor(0))
+            return All.apply(self.view(self.size), self._ensure_tensor(0))
         else:
             return All.apply(self, self._ensure_tensor(dim))
 
-    def is_close(self, b: TensorLike) -> Tensor:
+    def is_close(self, b: Tensor) -> Tensor:
         """Check if two tensors have close values element-wise."""
-        return IsClose.apply(self, self._ensure_tensor(b))
+        return IsClose.apply(self, b)
 
     def sigmoid(self) -> Tensor:
         """Apply the sigmoid function to the tensor element-wise."""
@@ -376,20 +377,16 @@ class Tensor:
         return (
             self.sum(dim) / self.shape[dim]
             if dim is not None
-            else self.sum(dim) / self.size
+            else self.sum() / self.size
         )
 
     def permute(self, *order: int, dim: Optional[int] = None) -> Tensor:
         """Permute the dimensions of the tensor."""
-        return Permute.apply(
-            self, Tensor.make(list(order), shape=(len(order),), backend=self.backend)
-        )
+        return Permute.apply(self, tensor(list(order)))
 
     def view(self, *shape: int, dim: Optional[int] = None) -> Tensor:
         """Reshape the tensor to the specified shape."""
-        return View.apply(
-            self, Tensor.make(list(shape), shape=(len(shape),), backend=self.backend)
-        )
+        return View.apply(self, tensor(list(shape)))
 
     def zero_grad_(self) -> None:
         """Set the gradient of the tensor to None."""
