@@ -135,7 +135,7 @@ if numba.cuda.is_available():
     @pytest.mark.task3_3
     def test_sum_practice() -> None:
         x = [random.random() for i in range(16)]
-        b = Tensor(TensorData(x, shape=(len(x),)))
+        b = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         s = b.sum()[0]
         b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = minitorch.sum_practice(b2)
@@ -144,7 +144,7 @@ if numba.cuda.is_available():
     @pytest.mark.task3_3
     def test_sum_practice2() -> None:
         x = [random.random() for i in range(64)]
-        b = Tensor(TensorData(x, shape=(len(x),)))
+        b = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         s = b.sum()[0]
         b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = minitorch.sum_practice(b2)
@@ -153,7 +153,7 @@ if numba.cuda.is_available():
     @pytest.mark.task3_3
     def test_sum_practice3() -> None:
         x = [random.random() for i in range(48)]
-        b = Tensor(TensorData(x, shape=(len(x),)))
+        b = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         s = b.sum()[0]
         b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = minitorch.sum_practice(b2)
