@@ -9,6 +9,7 @@ from . import operators
 from .tensor_data import (
     Index,
     MAX_DIMS,
+    TensorData,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -51,15 +52,15 @@ class TensorOps:
         """Matrix multiply"""
         assert a.shape[-1] == b.shape[-2], "Incompatible shapes"
         m, n, p = a.shape[-2], a.shape[-1], b.shape[-1]
-        out = np.zeros((m, p), dtype=a.dtype)
+        out = np.zeros((m, p), dtype=a._tensor._storage.dtype)
 
         for i in range(m):
             for j in range(p):
                 for k in range(n):
                     out[i, j] += a[i, k] * b[k, j]
 
-        return out
-
+        tensor_data = TensorData(out, out.shape)
+        return Tensor(tensor_data, backend=a.backend)
 
     cuda = False
 
@@ -287,8 +288,8 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        out_index: Index = np.zeros(MAX_DIMS, dtype=np.int16)
-        in_index = np.zeros(MAX_DIMS, dtype=np.int16)
+        out_index: Index = np.zeros(MAX_DIMS, dtype=np.int32)
+        in_index: Index = np.zeros(MAX_DIMS, dtype=np.int32)
 
         for i in range(len(out)):
             to_index(i, out_shape, out_index)

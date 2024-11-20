@@ -9,6 +9,7 @@ from hypothesis.strategies import DataObject, data, integers, lists, permutation
 
 import minitorch
 from minitorch import MathTestVariable, Tensor, TensorBackend, grad_check
+from minitorch.tensor_data import TensorData
 
 from .strategies import assert_close, small_floats
 from .tensor_strategies import assert_close_tensor, shaped_tensors, tensors
@@ -19,8 +20,8 @@ one_arg, two_arg, red_arg = MathTestVariable._comp_testing()
 # The tests in this file only run the main mathematical functions.
 # The difference is that they run with different tensor ops backends.
 
-SimpleBackend = minitorch.TensorBackend(minitorch.SimpleOps)
-FastTensorBackend = minitorch.TensorBackend(minitorch.FastOps)
+SimpleBackend = TensorBackend(minitorch.SimpleOps)
+FastTensorBackend = TensorBackend(minitorch.FastOps)
 shared: Dict[str, TensorBackend] = {"fast": FastTensorBackend}
 
 # ## Task 3.1
@@ -36,7 +37,7 @@ if numba.cuda.is_available():
 
     # ## Task 3.4
     matmul_tests.append(pytest.param("cuda", marks=pytest.mark.task3_4))
-    shared["cuda"] = minitorch.TensorBackend(minitorch.CudaOps)
+    shared["cuda"] = TensorBackend(minitorch.CudaOps)
 
 
 # ## Task 3.1 and 3.3
@@ -46,7 +47,7 @@ if numba.cuda.is_available():
 @pytest.mark.parametrize("backend", backend_tests)
 def test_create(backend: str, t1: List[float]) -> None:
     """Create different tensors."""
-    t2 = minitorch.tensor(t1, backend=shared[backend])
+    t2 = Tensor(TensorData(t1, shape=(len(t1),)), backend=shared[backend])
     for i in range(len(t1)):
         assert t1[i] == t2[i]
 
@@ -134,54 +135,56 @@ if numba.cuda.is_available():
     @pytest.mark.task3_3
     def test_sum_practice() -> None:
         x = [random.random() for i in range(16)]
-        b = minitorch.tensor(x)
+        b = Tensor(TensorData(x, shape=(len(x),)))
         s = b.sum()[0]
-        b2 = minitorch.tensor(x, backend=shared["cuda"])
+        b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = minitorch.sum_practice(b2)
         assert_close(s, out._storage[0])
 
     @pytest.mark.task3_3
     def test_sum_practice2() -> None:
         x = [random.random() for i in range(64)]
-        b = minitorch.tensor(x)
+        b = Tensor(TensorData(x, shape=(len(x),)))
         s = b.sum()[0]
-        b2 = minitorch.tensor(x, backend=shared["cuda"])
+        b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = minitorch.sum_practice(b2)
         assert_close(s, out._storage[0] + out._storage[1])
 
     @pytest.mark.task3_3
     def test_sum_practice3() -> None:
         x = [random.random() for i in range(48)]
-        b = minitorch.tensor(x)
+        b = Tensor(TensorData(x, shape=(len(x),)))
         s = b.sum()[0]
-        b2 = minitorch.tensor(x, backend=shared["cuda"])
+        b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = minitorch.sum_practice(b2)
         assert_close(s, out._storage[0] + out._storage[1])
 
     @pytest.mark.task3_3
     def test_sum_practice4() -> None:
         x = [random.random() for i in range(32)]
-        b = minitorch.tensor(x)
+        b = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         s = b.sum()[0]
-        b2 = minitorch.tensor(x, backend=shared["cuda"])
+        b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = b2.sum(0)
         assert_close(s, out[0])
 
     @pytest.mark.task3_3
     def test_sum_practice5() -> None:
         x = [random.random() for i in range(500)]
-        b = minitorch.tensor(x)
+        b = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         s = b.sum()[0]
-        b2 = minitorch.tensor(x, backend=shared["cuda"])
+        b2 = Tensor(TensorData(x, shape=(len(x),)), backend=shared["cuda"])
         out = b2.sum(0)
         assert_close(s, out[0])
 
     @pytest.mark.task3_3
     def test_sum_practice_other_dims() -> None:
         x = [[random.random() for i in range(32)] for j in range(16)]
-        b = minitorch.tensor(x)
+        x_flatten = [i for sub in x for i in sub]
+        shape = (16, 32)
+        b = Tensor(TensorData(x_flatten, shape=(shape)), backend=shared["cuda"])
         s = b.sum(1)
-        b2 = minitorch.tensor(x, backend=shared["cuda"])
+        b2 = Tensor(TensorData(x_flatten, shape=(shape)), backend=shared["cuda"])
         out = b2.sum(1)
         for i in range(16):
             assert_close(s[i, 0], out[i, 0])
@@ -190,12 +193,14 @@ if numba.cuda.is_available():
     def test_mul_practice1() -> None:
         x1 = [[random.random() for i in range(2)] for j in range(2)]
         y1 = [[random.random() for i in range(2)] for j in range(2)]
-        z = minitorch.tensor(x1, backend=shared["fast"]) @ minitorch.tensor(
-            y1, backend=shared["fast"]
-        )
+        x1_flatten = [i for sub in x1 for i in sub]
+        y1_flatten = [i for sub in y1 for i in sub]
+        z = Tensor(
+            TensorData(x1_flatten, shape=(2, 2)), backend=shared["fast"]
+        ) @ Tensor(TensorData(y1_flatten, shape=(2, 2)), backend=shared["fast"])
 
-        x = minitorch.tensor(x1, backend=shared["cuda"])
-        y = minitorch.tensor(y1, backend=shared["cuda"])
+        x = Tensor(TensorData(x1_flatten, shape=(2, 2)), backend=shared["cuda"])
+        y = Tensor(TensorData(y1_flatten, shape=(2, 2)), backend=shared["cuda"])
         z2 = minitorch.mm_practice(x, y)
         for i in range(2):
             for j in range(2):
@@ -205,12 +210,15 @@ if numba.cuda.is_available():
     def test_mul_practice2() -> None:
         x1 = [[random.random() for i in range(32)] for j in range(32)]
         y1 = [[random.random() for i in range(32)] for j in range(32)]
-        z = minitorch.tensor(x1, backend=shared["fast"]) @ minitorch.tensor(
-            y1, backend=shared["fast"]
-        )
 
-        x = minitorch.tensor(x1, backend=shared["cuda"])
-        y = minitorch.tensor(y1, backend=shared["cuda"])
+        x1_flat = [i for sub in x1 for i in sub]
+        y1_flat = [i for sub in y1 for i in sub]
+        z = Tensor(
+            TensorData(x1_flat, shape=(32, 32)), backend=shared["fast"]
+        ) @ Tensor(TensorData(y1_flat, shape=(32, 32)), backend=shared["fast"])
+
+        x = Tensor(TensorData(x1_flat, shape=(32, 32)), backend=shared["cuda"])
+        y = Tensor(TensorData(y1_flat, shape=(32, 32)), backend=shared["cuda"])
         z2 = minitorch.mm_practice(x, y)
         for i in range(32):
             for j in range(32):
@@ -221,12 +229,14 @@ if numba.cuda.is_available():
         """Small real example"""
         x1 = [[random.random() for i in range(2)] for j in range(2)]
         y1 = [[random.random() for i in range(2)] for j in range(2)]
-        z = minitorch.tensor(x1, backend=shared["fast"]) @ minitorch.tensor(
-            y1, backend=shared["fast"]
+        x1_flat = [i for sub in x1 for i in sub]
+        y1_flat = [i for sub in y1 for i in sub]
+        z = Tensor(TensorData(x1_flat, shape=(2, 2)), backend=shared["fast"]) @ Tensor(
+            TensorData(y1_flat, shape=(2, 2)), backend=shared["fast"]
         )
 
-        x = minitorch.tensor(x1, backend=shared["cuda"])
-        y = minitorch.tensor(y1, backend=shared["cuda"])
+        x = Tensor(TensorData(x1_flat, shape=(2, 2)), backend=shared["cuda"])
+        y = Tensor(TensorData(y1_flat, shape=(2, 2)), backend=shared["cuda"])
         z2 = x @ y
 
         for i in range(2):
@@ -239,12 +249,14 @@ if numba.cuda.is_available():
         size = 33
         x1 = [[random.random() for i in range(size)] for j in range(size)]
         y1 = [[random.random() for i in range(size)] for j in range(size)]
-        z = minitorch.tensor(x1, backend=shared["fast"]) @ minitorch.tensor(
-            y1, backend=shared["fast"]
-        )
+        x1_flat = [i for sub in x1 for i in sub]
+        y1_flat = [i for sub in y1 for i in sub]
+        z = Tensor(
+            TensorData(x1_flat, shape=(size, size)), backend=shared["fast"]
+        ) @ Tensor(TensorData(y1_flat, shape=(size, size)), backend=shared["fast"])
 
-        x = minitorch.tensor(x1, backend=shared["cuda"])
-        y = minitorch.tensor(y1, backend=shared["cuda"])
+        x = Tensor(TensorData(x1_flat, shape=(size, size)), backend=shared["cuda"])
+        y = Tensor(TensorData(y1_flat, shape=(size, size)), backend=shared["cuda"])
         z2 = x @ y
 
         for i in range(size):
@@ -263,12 +275,15 @@ if numba.cuda.is_available():
             [[random.random() for i in range(size)] for j in range(size)]
             for _ in range(2)
         ]
-        z = minitorch.tensor(x1, backend=shared["fast"]) @ minitorch.tensor(
-            y1, backend=shared["fast"]
-        )
+        x1_flat = [i for sub in x1 for row in sub for i in row]
+        y1_flat = [i for sub in y1 for row in sub for i in row]
 
-        x = minitorch.tensor(x1, backend=shared["cuda"])
-        y = minitorch.tensor(y1, backend=shared["cuda"])
+        z = Tensor(
+            TensorData(x1_flat, shape=(2, size, size)), backend=shared["fast"]
+        ) @ Tensor(TensorData(y1_flat, shape=(2, size, size)), backend=shared["fast"])
+
+        x = Tensor(TensorData(x1_flat, shape=(2, size, size)), backend=shared["cuda"])
+        y = Tensor(TensorData(y1_flat, shape=(2, size, size)), backend=shared["cuda"])
         z2 = x @ y
 
         for b in range(2):
@@ -290,12 +305,20 @@ if numba.cuda.is_available():
             [[random.random() for i in range(size_b)] for j in range(size_in)]
             for _ in range(2)
         ]
-        z = minitorch.tensor(x1, backend=shared["fast"]) @ minitorch.tensor(
-            y1, backend=shared["fast"]
+        x1_flat = [i for sub in x1 for row in sub for i in row]
+        y1_flat = [i for sub in y1 for row in sub for i in row]
+        z = Tensor(
+            TensorData(x1_flat, shape=(2, size_a, size_in)), backend=shared["fast"]
+        ) @ Tensor(
+            TensorData(y1_flat, shape=(2, size_in, size_b)), backend=shared["fast"]
         )
 
-        x = minitorch.tensor(x1, backend=shared["cuda"])
-        y = minitorch.tensor(y1, backend=shared["cuda"])
+        x = Tensor(
+            TensorData(x1_flat, shape=(2, size_a, size_in)), backend=shared["cuda"]
+        )
+        y = Tensor(
+            TensorData(y1_flat, shape=(2, size_in, size_b)), backend=shared["cuda"]
+        )
         z2 = x @ y
 
         for b in range(2):
