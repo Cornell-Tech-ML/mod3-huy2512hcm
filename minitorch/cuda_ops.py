@@ -513,25 +513,38 @@ def _tensor_matrix_multiply(
 
     # TODO: Implement for Task 3.4.
     shared_dim = a_shape[-1]
+
+    # Initialize the accumulator
     acc = 0.0
+
+    # Iterate over the shared dimension in chunks of block dim
     for k in range(0, shared_dim, BLOCK_DIM):
+        # Initialize shared memory to ero
         a_shared[pi, pj] = 0.0
         b_shared[pi, pj] = 0.0
+        # Ensure threads are synced before writing to shared memory
         cuda.syncthreads()
+
+        # Load a block of data from 'a' into shared if within guard
         if i < a_shape[-2] and k + pj < shared_dim:
             a_shared[pi, pj] = a_storage[
                 batch * a_batch_stride + i * a_strides[-2] + (k + pj) * a_strides[-1]
             ]
+        # Load a block of data from 'b' into shared if within guard
         if j < b_shape[-1] and k + pi < shared_dim:
             b_shared[pi, pj] = b_storage[
                 batch * b_batch_stride + (k + pi) * b_strides[-2] + j * b_strides[-1]
             ]
+        # Sync threads to make sure shared memory is fully populated
         cuda.syncthreads()
 
+        # Compute partial dot product for the current block
         for bk in range(BLOCK_DIM):
             acc += a_shared[pi, bk] * b_shared[bk, pj]
+        # Sync threads to avoid overwriting shared memory while other threads are still using it
         cuda.syncthreads()
 
+    # Global write the computed value to output tensor if within guard
     if i < out_shape[-2] and j < out_shape[-1]:
         out[batch * out_strides[0] + i * out_strides[-2] + j * out_strides[-1]] = acc
 

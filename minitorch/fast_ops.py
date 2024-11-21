@@ -138,6 +138,21 @@ class FastOps(TensorOps):
 
 
 # Implementations
+@njit
+def strideAligned(
+    out_strides: Strides, in_strides: Strides, out_shape: Shape, in_shape: Shape
+) -> bool:
+    """Checks if the strides of the output and input tensors are aligned."""
+    if len(out_shape) != len(in_shape):
+        return False
+
+    for i in range(len(out_shape)):
+        if out_shape[i] != in_shape[i]:
+            return False
+        if out_strides[i] != in_strides[i]:
+            return False
+
+    return True
 
 
 def tensor_map(
@@ -169,15 +184,21 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        for i in prange(len(out)):
-            out_index = np.zeros(len(out_shape), dtype=np.int32)
-            in_index = np.zeros(len(in_shape), dtype=np.int32)
-            to_index(i, out_shape, out_index)
-            broadcast_index(out_index, out_shape, in_shape, in_index)
+        is_stride_aligned = strideAligned(out_strides, in_strides, out_shape, in_shape)
 
-            in_pos = index_to_position(in_index, in_strides)
-            out_pos = index_to_position(out_index, out_strides)
-            out[out_pos] = fn(in_storage[in_pos])
+        # Optimize if strides are aligned
+        if is_stride_aligned:
+            for i in prange(len(out)):
+                out[i] = fn(in_storage[i])
+        else:
+            for i in prange(len(out)):
+                out_index = np.empty(len(out_shape), dtype=np.int32)
+                in_index = np.empty(len(in_shape), dtype=np.int32)
+                to_index(i, out_shape, out_index)
+                broadcast_index(out_index, out_shape, in_shape, in_index)
+                in_pos = index_to_position(in_index, in_strides)
+                out_pos = index_to_position(out_index, out_strides)
+                out[out_pos] = fn(in_storage[in_pos])
 
     return njit(_map, parallel=True)
 
@@ -216,20 +237,26 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # Create index buffers
+        is_stride_aligned_a = strideAligned(out_strides, a_strides, out_shape, a_shape)
+        is_stride_aligned_b = strideAligned(out_strides, b_strides, out_shape, b_shape)
 
-        for i in prange(len(out)):
-            out_index: Index = np.zeros(len(out_shape), dtype=np.int32)
-            a_index: Index = np.zeros(len(a_shape), dtype=np.int32)
-            b_index: Index = np.zeros(len(b_shape), dtype=np.int32)
-            to_index(i, out_shape, out_index)
-            broadcast_index(out_index, out_shape, a_shape, a_index)
-            broadcast_index(out_index, out_shape, b_shape, b_index)
+        # Optimize if strides are aligned
+        if is_stride_aligned_a and is_stride_aligned_b:
+            for i in prange(len(out)):
+                out[i] = fn(a_storage[i], b_storage[i])
+        else:
+            for i in prange(len(out)):
+                out_index: Index = np.zeros(len(out_shape), dtype=np.int32)
+                a_index: Index = np.zeros(len(a_shape), dtype=np.int32)
+                b_index: Index = np.zeros(len(b_shape), dtype=np.int32)
+                to_index(i, out_shape, out_index)
+                broadcast_index(out_index, out_shape, a_shape, a_index)
+                broadcast_index(out_index, out_shape, b_shape, b_index)
 
-            a_pos = index_to_position(a_index, a_strides)
-            b_pos = index_to_position(b_index, b_strides)
-            out_pos = index_to_position(out_index, out_strides)
-            out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
+                a_pos = index_to_position(a_index, a_strides)
+                b_pos = index_to_position(b_index, b_strides)
+                out_pos = index_to_position(out_index, out_strides)
+                out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
 
     return njit(_zip, parallel=True)
 
