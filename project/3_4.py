@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 
 # Data for timing summary
 sizes = [64, 128, 256, 512, 1024]
-fast_times = [0.00926, 0.03335, 0.17767, 1.07898, 8.07505]
-gpu_times = [0.00945, 0.02600, 0.09527, 0.22972, 1.07416]
+fast_times = [0.00378, 0.01482, 0.07476, 0.63413, 4.36493]
+gpu_times = [0.00672, 0.01506, 0.05186, 0.20378, 0.84500]
 
 # Plotting the data
 plt.figure(figsize=(10, 6))
