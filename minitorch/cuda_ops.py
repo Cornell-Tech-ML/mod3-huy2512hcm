@@ -511,7 +511,7 @@ def _tensor_matrix_multiply(
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
 
-    # TODO: Implement for Task 3.4.
+    # Get the size of the shared dimension
     shared_dim = a_shape[-1]
 
     # Initialize the accumulator
@@ -519,10 +519,10 @@ def _tensor_matrix_multiply(
 
     # Iterate over the shared dimension in chunks of block dim
     for k in range(0, shared_dim, BLOCK_DIM):
-        # Initialize shared memory to ero
+        # Initialize shared memory of this block to zero
         a_shared[pi, pj] = 0.0
         b_shared[pi, pj] = 0.0
-        # Ensure threads are synced before writing to shared memory
+        # Synchronize threads to ensure shared memory is ready for use
         cuda.syncthreads()
 
         # Load a block of data from 'a' into shared if within guard
